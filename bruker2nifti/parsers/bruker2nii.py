@@ -58,6 +58,11 @@ def main():
                         type=int,
                         default=2)
 
+    # do_not_save_npy = False,
+    parser.add_argument('-do_not_save_npy',
+                        dest='do_not_save_npy',
+                        action='store_true')
+
     # do_not_save_human_readable = False,
     parser.add_argument('-do_not_save_human_readable',
                         dest='do_not_save_human_readable',
@@ -100,6 +105,7 @@ def main():
     bruconv.nifti_version = args.nifti_version
     bruconv.qform_code = args.qform_code
     bruconv.sform_code = args.sform_code
+    bruconv.save_npy = not args.do_not_save_npy
     bruconv.save_human_readable = not args.do_not_save_human_readable
     bruconv.correct_visu_slope = args.correct_visu_slope
     bruconv.correct_reco_slope = args.correct_reco_slope
@@ -115,6 +121,7 @@ def main():
         print('Output NifTi version   : {}'.format(bruconv.nifti_version))
         print('Output NifTi q-form    : {}'.format(bruconv.qform_code))
         print('Output NifTi s-form    : {}'.format(bruconv.sform_code))
+        print('Save npy               : {}'.format(bruconv.save_npy))
         print('Save human readable    : {}'.format(bruconv.save_human_readable))
         print('Correct the visu slope : {}'.format(bruconv.correct_visu_slope))
         print('Correct the reco slope : {}'.format(bruconv.correct_reco_slope))

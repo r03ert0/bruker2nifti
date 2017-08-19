@@ -207,6 +207,7 @@ def write_struct(bruker_struct,
                  pfo_output,
                  fin_scan='',
                  save_human_readable=True,
+                 save_npy=True,
                  save_b0_if_dwi=True,
                  verbose=1,
                  frame_body_as_frame_head=False,
@@ -223,7 +224,8 @@ def write_struct(bruker_struct,
     :param bruker_struct: output of scan2struct
     :param pfo_output: path-to-folder where the converted structure will be saved.
     :param fin_scan: filename of the scan
-    :param save_human_readable: output data will be saved in .txt other than in numpy format.
+    :param save_human_readable: output data will be saved in .txt format.
+    :param save_npy: output data will be saved in numpy format.
     :param save_b0_if_dwi: save the first time-point if the data is a DWI.
     :param verbose:
     :param frame_body_as_frame_head: according to the animal. If True monkey, if False rat-rabbit
@@ -275,7 +277,8 @@ def write_struct(bruker_struct,
             user_affine = np.loadtxt(user_matrix)
             dw_grad_vec = apply_matrix_to_bvecs(dw_grad_vec,user_affine)
 
-        np.save(jph(pfo_output, fin_scan + '_DwGradVec.npy'), dw_grad_vec)
+        if save_npy:
+            np.save(jph(pfo_output, fin_scan + '_DwGradVec.npy'), dw_grad_vec)
 
         if save_human_readable:
             np.savetxt(jph(pfo_output, fin_scan + '_DwGradVec.txt'), dw_grad_vec, fmt='%.14f')
@@ -287,8 +290,9 @@ def write_struct(bruker_struct,
         b_vals = bruker_struct['method']['DwEffBval']
         b_vects = bruker_struct['method']['DwDir']
 
-        np.save(jph(pfo_output, fin_scan + '_DwEffBval.npy'), b_vals)
-        np.save(jph(pfo_output, fin_scan + '_DwDir.npy'), b_vects)
+        if save_npy:
+            np.save(jph(pfo_output, fin_scan + '_DwEffBval.npy'), b_vals)
+            np.save(jph(pfo_output, fin_scan + '_DwDir.npy'), b_vects)
 
         if save_human_readable:
             np.savetxt(jph(pfo_output, fin_scan + '_DwEffBval.txt'), b_vals, fmt='%.14f')
@@ -302,15 +306,18 @@ def write_struct(bruker_struct,
     # TODO use pickle instead of numpy to save the dictionaries(?)
 
     if not bruker_struct['acqp'] == {}:
-        np.save(jph(pfo_output, fin_scan + '_acqp.npy'), bruker_struct['acqp'])
+        if save_npy:
+            np.save(jph(pfo_output, fin_scan + '_acqp.npy'), bruker_struct['acqp'])
         if save_human_readable:
             from_dict_to_txt_sorted(bruker_struct['acqp'], jph(pfo_output, fin_scan + '_acqp.txt'))
     if not bruker_struct['method'] == {}:
-        np.save(jph(pfo_output, fin_scan + '_method.npy'), bruker_struct['method'])
+        if save_npy:
+            np.save(jph(pfo_output, fin_scan + '_method.npy'), bruker_struct['method'])
         if save_human_readable:
             from_dict_to_txt_sorted(bruker_struct['method'], jph(pfo_output, fin_scan + '_method.txt'))
     if not bruker_struct['reco'] == {}:
-        np.save(jph(pfo_output, fin_scan + '_reco.npy'), bruker_struct['reco'])
+        if save_npy:
+            np.save(jph(pfo_output, fin_scan + '_reco.npy'), bruker_struct['reco'])
         if save_human_readable:
             from_dict_to_txt_sorted(bruker_struct['reco'], jph(pfo_output, fin_scan + '_reco.txt'))
 
@@ -325,11 +332,13 @@ def write_struct(bruker_struct,
             i_label = '_'
 
         # A) Save visu_pars for each sub-scan:
-        np.save(jph(pfo_output, fin_scan + i_label + 'visu_pars.npy'), bruker_struct['visu_pars_list'][i])
+        if save_npy:
+            np.save(jph(pfo_output, fin_scan + i_label + 'visu_pars.npy'), bruker_struct['visu_pars_list'][i])
 
         # B) Save single visu_slope data for each sub-scan (from visu_pars):
-        np.save(jph(pfo_output, fin_scan + i_label + 'visu_slope.npy'),
-                bruker_struct['visu_pars_list'][i]['VisuCoreDataSlope'])
+        if save_npy:
+            np.save(jph(pfo_output, fin_scan + i_label + 'visu_slope.npy'),
+                    bruker_struct['visu_pars_list'][i]['VisuCoreDataSlope'])
 
         # A and B) save them both in .txt if human readable version of data is required.
         if save_human_readable:

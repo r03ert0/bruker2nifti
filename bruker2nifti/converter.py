@@ -42,6 +42,7 @@ class Bruker2Nifti(object):
         self.nifti_version = 1
         self.qform_code = 1
         self.sform_code = 2
+        self.save_npy = True
         self.save_human_readable = True
         self.save_b0_if_dwi = True  # if DWI, it saves the first layer as a single nfti image.
         self.correct_visu_slope = False
@@ -140,6 +141,7 @@ class Bruker2Nifti(object):
             write_struct(struct_scan,
                          pfo_output_converted,
                          fin_scan=nifti_file_name,
+                         save_npy=self.save_npy,
                          save_human_readable=self.save_human_readable,
                          save_b0_if_dwi=self.save_b0_if_dwi,
                          verbose=self.verbose,
