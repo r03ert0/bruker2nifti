@@ -281,7 +281,7 @@ def write_struct(bruker_struct,
             np.save(jph(pfo_output, fin_scan + '_DwGradVec.npy'), dw_grad_vec)
 
         if save_human_readable:
-            np.savetxt(jph(pfo_output, fin_scan + '_DwGradVec.txt'), dw_grad_vec, fmt='%.14f')
+            np.savetxt(jph(pfo_output, fin_scan + '_DwGradVec.txt'), dw_grad_vec.T, fmt='%.14f')
 
         if verbose > 0:
             msg = 'Diffusion weighted directions saved in ' + jph(pfo_output, fin_scan + '_DwDir.npy')
@@ -295,8 +295,8 @@ def write_struct(bruker_struct,
             np.save(jph(pfo_output, fin_scan + '_DwDir.npy'), b_vects)
 
         if save_human_readable:
-            np.savetxt(jph(pfo_output, fin_scan + '_DwEffBval.txt'), b_vals, fmt='%.14f')
-            np.savetxt(jph(pfo_output, fin_scan + '_DwDir.txt'), b_vects, fmt='%.14f')
+            np.savetxt(jph(pfo_output, fin_scan + '_DwEffBval.txt'), b_vals.T, fmt='%.14f', newline=' ')
+            np.savetxt(jph(pfo_output, fin_scan + '_DwDir.txt'), b_vects.T, fmt='%.14f')
 
         if verbose > 0:
             print('B-vectors saved in {}'.format(jph(pfo_output, fin_scan + '_DwEffBval.npy')))
