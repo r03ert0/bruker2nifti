@@ -302,9 +302,7 @@ def write_struct(bruker_struct,
             print('B-vectors saved in {}'.format(jph(pfo_output, fin_scan + '_DwEffBval.npy')))
             print('B-values  saved in {}'.format(jph(pfo_output, fin_scan + '_DwGradVec.npy')))
 
-    # save the dictionary as numpy array containing the corresponding dictionaries
-    # TODO use pickle instead of numpy to save the dictionaries(?)
-
+    # save the dictionary as numpy array or json containing the corresponding dictionaries
     if not bruker_struct['acqp'] == {}:
         if save_npy:
             np.save(jph(pfo_output, fin_scan + '_acqp.npy'), bruker_struct['acqp'])
@@ -343,7 +341,7 @@ def write_struct(bruker_struct,
         # A and B) save them both in .txt if human readable version of data is required.
         if save_human_readable:
             from_dict_to_txt_sorted(bruker_struct['visu_pars_list'][i],
-                                    jph(pfo_output, fin_scan + i_label + 'visu_pars.txt'))
+                                    jph(pfo_output, fin_scan + i_label + 'visu_pars.json'))
 
             visu_slope = bruker_struct['visu_pars_list'][i]['VisuCoreDataSlope']
             if not isinstance(visu_slope, np.ndarray):
