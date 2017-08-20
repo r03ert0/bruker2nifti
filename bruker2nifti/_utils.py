@@ -2,6 +2,7 @@ import numpy as np
 import os
 import nibabel as nib
 from os.path import join as jph
+import json
 
 
 # --- text-files utils ---
@@ -62,6 +63,16 @@ def var_name_clean(line_in):
     line_out = line_in.replace('#', '').replace('$', '').replace('PVM_', '').strip()
     return line_out
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(MyEncoder, self).default(obj)
 
 def from_dict_to_txt_sorted(dict_input, pfi_output):
     """
@@ -71,10 +82,8 @@ def from_dict_to_txt_sorted(dict_input, pfi_output):
     :param pfi_output: path to file.
     :return:
     """
-    sorted_keys = sorted(dict_input.keys())
-
     with open(pfi_output, 'w') as f:
-        f.writelines('{0} = {1} \n'.format(k, dict_input[k]) for k in sorted_keys)
+        json.dump(dict_input, f, sort_keys=True, cls=NumpyEncoder)
 
 
 def bruker_read_files(param_file, data_path, sub_scan_num='1'):

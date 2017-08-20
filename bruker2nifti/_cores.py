@@ -309,17 +309,17 @@ def write_struct(bruker_struct,
         if save_npy:
             np.save(jph(pfo_output, fin_scan + '_acqp.npy'), bruker_struct['acqp'])
         if save_human_readable:
-            from_dict_to_txt_sorted(bruker_struct['acqp'], jph(pfo_output, fin_scan + '_acqp.txt'))
+            from_dict_to_txt_sorted(bruker_struct['acqp'], jph(pfo_output, fin_scan + '_acqp.json'))
     if not bruker_struct['method'] == {}:
         if save_npy:
             np.save(jph(pfo_output, fin_scan + '_method.npy'), bruker_struct['method'])
         if save_human_readable:
-            from_dict_to_txt_sorted(bruker_struct['method'], jph(pfo_output, fin_scan + '_method.txt'))
+            from_dict_to_txt_sorted(bruker_struct['method'], jph(pfo_output, fin_scan + '_method.json'))
     if not bruker_struct['reco'] == {}:
         if save_npy:
             np.save(jph(pfo_output, fin_scan + '_reco.npy'), bruker_struct['reco'])
         if save_human_readable:
-            from_dict_to_txt_sorted(bruker_struct['reco'], jph(pfo_output, fin_scan + '_reco.txt'))
+            from_dict_to_txt_sorted(bruker_struct['reco'], jph(pfo_output, fin_scan + '_reco.json'))
 
     # Visu_pars and summary info for each sub-scan:
     summary_info = {}
@@ -446,7 +446,7 @@ def write_struct(bruker_struct,
         summary_info.update(summary_info_reco)
 
     # Finally summary info with the updated information.
-    from_dict_to_txt_sorted(summary_info, jph(pfo_output, fin_scan + '_summary.txt'))
+    from_dict_to_txt_sorted(summary_info, jph(pfo_output, fin_scan + '_summary.json'))
 
     # Get the method name in a single .txt file:
     if bruker_struct['acquisition_method'] is not '':
