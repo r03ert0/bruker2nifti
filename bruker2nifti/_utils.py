@@ -391,11 +391,11 @@ def reco_slope_corrector(data, reco_slope, num_initial_dir_to_skip=None, dtype=n
 
     if isinstance(reco_slope, int) or isinstance(reco_slope, float):
         # scalar reco_slope times nd array data
-        data *= reco_slope
+        data /= reco_slope
 
     elif reco_slope.size == 1:
         # scalar reco_slope embedded in a singleton times nd array data
-        data *= reco_slope[0]
+        data /= reco_slope[0]
 
     elif len(data.shape) == 3 and len(reco_slope.shape) == 1:
         # each slice of the 3d image is multiplied an element of the reco_slope
@@ -412,7 +412,7 @@ def reco_slope_corrector(data, reco_slope, num_initial_dir_to_skip=None, dtype=n
         if reco_slope.size == data.shape[2]:
             for t in range(data.shape[3]):
                 for k in range(reco_slope.size):
-                    data[..., k, t] = data[..., k, t] * reco_slope[k]
+                    data[..., k, t] = data[..., k, t] / reco_slope[k]
         else:
             raise IOError('If you are here, your case cannot be converted. Further investigations required.')
 
@@ -421,7 +421,7 @@ def reco_slope_corrector(data, reco_slope, num_initial_dir_to_skip=None, dtype=n
         if reco_slope.size == data.shape[3]:
             for t in range(data.shape[4]):
                 for k in range(reco_slope.size):
-                    data[..., k, t] = data[..., k, t] * reco_slope[k]
+                    data[..., k, t] = data[..., k, t] / reco_slope[k]
         else:
             raise IOError('If you are here, your case cannot be converted. Further investigations required.')
 
@@ -429,7 +429,7 @@ def reco_slope_corrector(data, reco_slope, num_initial_dir_to_skip=None, dtype=n
         # each slice of the nd image, taken from the last dimension, is multiplied by each element of the reco_slope.
         if reco_slope.size == data.shape[-1]:
             for t in range(data.shape[-1]):
-                data[..., t] = data[..., t] * reco_slope[t]
+                data[..., t] = data[..., t] / reco_slope[t]
         else:
             msg = 'Reco_slope shape {0} and data shape {1} appears to be not compatible'.format(reco_slope.shape, data.shape)
             raise IOError(msg)
