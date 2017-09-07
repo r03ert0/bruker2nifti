@@ -101,7 +101,7 @@ class Bruker2Nifti(object):
             raise IOError('Input folder does not exists.')
 
         print('Study folder structure: ')
-        scans_list = get_list_scans(self.pfo_study_bruker_input)
+        scans_list = get_list_scans(self.pfo_study_bruker_input, print_structure=False)
         print('\n')
         print('List of scans: {}'.format(scans_list))
         pfi_first_scan = os.path.join(self.pfo_study_bruker_input, scans_list[0])
