@@ -50,7 +50,7 @@ def get_subject_name(pfo_study):
     # (2) 'subject' at the study level is not present, we use 'VisuSubjectId' from visu_pars of the first scan.
     # Longer solution as at the end 'visu_pars' will be unavoidably scanned twice.
     else:
-        list_scans = get_list_scans(pfo_study)
+        list_scans = get_list_scans(pfo_study, print_structure=False)
         visu_pars = bruker_read_files('visu_pars', pfo_study, sub_scan_num=list_scans[0])
         return visu_pars['VisuSubjectId']
 
@@ -67,6 +67,7 @@ def nifti_getter(img_data_vol,
                  keep_same_det=True,
                  consider_subject_position=False,
                  user_matrix=None,
+                 verbose=1,
                  ):
     """
     Passage method to get a nifti image from the volume and the element contained into visu_pars.
