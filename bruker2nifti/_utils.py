@@ -716,7 +716,7 @@ def set_new_data(image, new_data, new_dtype=None, remove_nan=True):
 
 
 def apply_orientation_matrix_to_image(pfi_nifti_image, affine_transformation_left,
-                                      pfo_output=None, pfi_b_vects=None, suffix='new', verbose=1):
+                                      pfo_output=None, pfi_b_vects=None, suffix='new', verbose=0):
     """
     :param pfi_nifti_image: path to file to a nifti image.
     :param affine_transformation_left: a reorientation matrix.
@@ -750,6 +750,8 @@ def apply_orientation_matrix_to_image(pfi_nifti_image, affine_transformation_lef
 
     # save output image
     nib.save(new_im, pfi_new_image)
+    
+    # save reoriented bvects
     if pfi_b_vects is not None:
         bvects_name = os.path.basename(pfi_b_vects).split('.')[0]
         bvects_ext = os.path.basename(pfi_b_vects).split('.')[-1]
@@ -771,12 +773,12 @@ def apply_orientation_matrix_to_image(pfi_nifti_image, affine_transformation_lef
         print('Affine after transformation: \n')
         print(new_im.get_affine())
 
-def apply_matrix_to_image(im, affine_transformation_left, verbose=1):
+def apply_matrix_to_image(im, affine_transformation_left, do_sanity_check=False, verbose=1):
     """
     :param im: nifti image as returned by nib.load(pfi_nifti_image)
     :param affine_transformation_left: a reorientation matrix.
     :param verbose:
-    :return: None. image transformed according to a matrix.
+    :return: Image transformed according to a matrix.
     """
     assert isinstance(affine_transformation_left, np.ndarray)
 
@@ -790,8 +792,9 @@ def apply_matrix_to_image(im, affine_transformation_left, verbose=1):
         raise IOError
 
     # sanity check
-    msg = 'Is the input matrix a re-orientation matrix?'
-    np.testing.assert_almost_equal(np.linalg.det(new_affine), np.linalg.det(im.get_affine()), err_msg=msg)
+    if do_sanity_check:
+        msg = 'Is the input matrix a re-orientation matrix?'
+        np.testing.assert_almost_equal(np.linalg.det(new_affine), np.linalg.det(im.get_affine()), err_msg=msg)
 
     if verbose > 0:
         # print intermediate results
