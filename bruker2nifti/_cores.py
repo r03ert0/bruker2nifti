@@ -11,6 +11,110 @@ from ._utils import bruker_read_files, normalise_b_vect, from_dict_to_txt_sorted
     apply_reorientation_to_b_vects, obtain_b_vectors_orient_matrix, apply_matrix_to_bvecs
 
 
+def process_sub_scan(pfo_scan,id_sub_scan,
+                correct_visu_slope=True,
+                correct_reco_slope=True,
+                nifti_version=1,
+                qform_code=1,
+                sform_code=2,
+                get_acqp=False,
+                get_method=False,
+                get_reco=False,
+                frame_body_as_frame_head=False,
+                keep_same_det=True,
+                consider_subject_position=False,
+                user_matrix=None,
+                verbose=0,
+                ):
+    # Get system endian_nes
+    system_endian_nes = sys.byteorder
+
+    reco = {}
+    reco = bruker_read_files('reco', pfo_scan, sub_scan_num=id_sub_scan)
+    if reco == {}:
+        warn_msg = "Warning: No 'reco' file to parse in scan "+id_sub_scan
+        warnings.warn(warn_msg)
+        correct_reco_slope = False
+
+    visu_pars = {}
+    visu_pars = bruker_read_files('visu_pars', pfo_scan, sub_scan_num=id_sub_scan)
+    if visu_pars == {}:
+        warn_msg = "\nNo 'visu_pars' data found here: \n{}. \nAre you sure the input folder contains a " \
+                   "proper Bruker scan?\n".format(jph(pfo_scan, 'pdata', id_sub_scan))
+        warnings.warn(warn_msg)
+        return None
+
+    # Get data endian_nes - default big!!
+    if visu_pars['VisuCoreByteOrder'] == 'littleEndian':
+        data_endian_ness = 'little'
+    elif visu_pars['VisuCoreByteOrder'] == 'bigEndian':
+        data_endian_ness = 'big'
+    else:
+        data_endian_ness = 'big'
+
+    # Get datatype
+    if visu_pars['VisuCoreWordType'] == '_32BIT_SGN_INT':
+        dt = np.int32
+    elif visu_pars['VisuCoreWordType'] == '_16BIT_SGN_INT':
+        dt = np.int16
+    elif visu_pars['VisuCoreWordType'] == '_8BIT_UNSGN_INT':
+        dt = np.uint8
+    elif visu_pars['VisuCoreWordType'] == '_32BIT_FLOAT':
+        dt = np.float32
+    else:
+        raise IOError('Unknown data type for VisuPars VisuCoreWordType')
+
+    # GET IMAGE VOLUME
+    if os.path.exists(jph(pfo_scan, 'pdata', id_sub_scan, '2dseq')):
+        img_data_vol = np.copy(np.fromfile(jph(pfo_scan, 'pdata', id_sub_scan, '2dseq'), dtype=dt))
+    else:
+        warn_msg = "\nNo '2dseq' data found here: \n{}. \nAre you sure the input folder contains a " \
+                   "proper Bruker scan?\n".format(jph(pfo_scan, 'pdata', id_sub_scan))
+        warnings.warn(warn_msg)
+        return None
+
+    if not data_endian_ness == system_endian_nes:
+        img_data_vol.byteswap(True)
+
+    if 'VisuAcqSequenceName' in visu_pars.keys():
+        visu_pars_acq_sequence_name = visu_pars['VisuAcqSequenceName']
+    else:
+        visu_pars_acq_sequence_name = ''
+
+    is_dwi = 'dtiepi' in visu_pars_acq_sequence_name.lower()
+
+    if is_dwi:
+        # Force to not correcting the visu_slope, if true. Diffusion weighted images must be slope corrected before the
+        # DTI analysis. They will be to heavy otherwise.
+        # (for reco_slope, the user decision is not changed)
+        correct_visu_slope = False
+
+        # Force method file to be parsed. Useful infos in this file to process the DWI.
+        get_method = True
+        # Force reco file to be parsed. Useful infos in this file to process the DWI.
+        get_reco   = True
+
+    # ------------------------------------------------------ #
+    # ------ Generate the nifti image using visu_pars. ----- #
+    # ------------------------------------------------------ #
+    nib_im = nifti_getter(img_data_vol,
+                          visu_pars,
+                          reco,
+                          correct_visu_slope,
+                          correct_reco_slope,
+                          nifti_version,
+                          qform_code,
+                          sform_code,
+                          frame_body_as_frame_head=frame_body_as_frame_head,
+                          keep_same_det=keep_same_det,
+                          consider_subject_position=consider_subject_position,
+                          user_matrix=user_matrix
+                          )
+    # ------------------------------------------------------ #
+    # ------------------------------------------------------ #
+    
+    return (nib_im, visu_pars, get_method, get_reco)
+
 def scan2struct(pfo_scan,
                 correct_visu_slope=True,
                 correct_reco_slope=True,
@@ -61,7 +165,7 @@ def scan2struct(pfo_scan,
     system_endian_nes = sys.byteorder
 
     # Get sub-scans series in the same experiment.
-    list_sub_scans = get_list_scans(jph(pfo_scan, 'pdata'))
+    list_sub_scans = get_list_scans(jph(pfo_scan, 'pdata'), print_structure=False)
 
     if not list_sub_scans:
         warn_msg = "\nNo sub scan in the folder structure: \n{}. \nAre you sure the input folder contains a " \
@@ -74,91 +178,17 @@ def scan2struct(pfo_scan,
 
     for id_sub_scan in list_sub_scans:
 
-        print "Processing scan", id_sub_scan
-        
-        reco = {}
-        reco = bruker_read_files('reco', pfo_scan, sub_scan_num=id_sub_scan)
-        if reco == {}:
-            warn_msg = "Warning: No 'reco' file to parse in scan "+id_sub_scan
-            warnings.warn(warn_msg)
-            correct_reco_slope = False
-
-        visu_pars = {}
-        visu_pars = bruker_read_files('visu_pars', pfo_scan, sub_scan_num=id_sub_scan)
-        if visu_pars == {}:
-            warn_msg = "\nNo 'visu_pars' data found here: \n{}. \nAre you sure the input folder contains a " \
-                       "proper Bruker scan?\n".format(jph(pfo_scan, 'pdata', id_sub_scan))
-            warnings.warn(warn_msg)
-            return None
-
-        # Get data endian_nes - default big!!
-        if visu_pars['VisuCoreByteOrder'] == 'littleEndian':
-            data_endian_ness = 'little'
-        elif visu_pars['VisuCoreByteOrder'] == 'bigEndian':
-            data_endian_ness = 'big'
-        else:
-            data_endian_ness = 'big'
-
-        # Get datatype
-        if visu_pars['VisuCoreWordType'] == '_32BIT_SGN_INT':
-            dt = np.int32
-        elif visu_pars['VisuCoreWordType'] == '_16BIT_SGN_INT':
-            dt = np.int16
-        elif visu_pars['VisuCoreWordType'] == '_8BIT_UNSGN_INT':
-            dt = np.uint8
-        elif visu_pars['VisuCoreWordType'] == '_32BIT_FLOAT':
-            dt = np.float32
-        else:
-            raise IOError('Unknown data type for VisuPars VisuCoreWordType')
-
-        # GET IMAGE VOLUME
-        if os.path.exists(jph(pfo_scan, 'pdata', id_sub_scan, '2dseq')):
-            img_data_vol = np.copy(np.fromfile(jph(pfo_scan, 'pdata', id_sub_scan, '2dseq'), dtype=dt))
-        else:
-            warn_msg = "\nNo '2dseq' data found here: \n{}. \nAre you sure the input folder contains a " \
-                       "proper Bruker scan?\n".format(jph(pfo_scan, 'pdata', id_sub_scan))
-            warnings.warn(warn_msg)
-            return None
-
-        if not data_endian_ness == system_endian_nes:
-            img_data_vol.byteswap(True)
-
-        if 'VisuAcqSequenceName' in visu_pars.keys():
-            visu_pars_acq_sequence_name = visu_pars['VisuAcqSequenceName']
-        else:
-            visu_pars_acq_sequence_name = ''
-
-        is_dwi = 'dtiepi' in visu_pars_acq_sequence_name.lower()
-
-        if is_dwi:
-            # Force to not correcting the visu_slope, if true. Diffusion weighted images must be slope corrected before the
-            # DTI analysis. They will be to heavy otherwise.
-            # (for reco_slope, the user decision is not changed)
-            correct_visu_slope = False
-
-            # Force method file to be parsed. Useful infos in this file to process the DWI.
-            get_method = True
-            # Force reco file to be parsed. Useful infos in this file to process the DWI.
-            get_reco   = True
-
-        # ------------------------------------------------------ #
-        # ------ Generate the nifti image using visu_pars. ----- #
-        # ------------------------------------------------------ #
-        nib_im = nifti_getter(img_data_vol,
-                              visu_pars,
-                              reco,
-                              correct_visu_slope,
-                              correct_reco_slope,
-                              nifti_version,
-                              qform_code,
-                              sform_code,
-                              frame_body_as_frame_head=frame_body_as_frame_head,
-                              keep_same_det=keep_same_det,
-                              consider_subject_position=consider_subject_position,
-                              user_matrix=user_matrix
-                              )
-        # ------------------------------------------------------ #
-        # ------------------------------------------------------ #
+        nib_im, visu_pars, get_method, get_reco = process_sub_scan(pfo_scan, id_sub_scan,
+                correct_visu_slope=correct_visu_slope,
+                correct_reco_slope=correct_reco_slope,
+                nifti_version=nifti_version,
+                qform_code=qform_code,
+                sform_code=sform_code,
+                get_acqp=get_acqp,
+                get_method=get_method,
+                get_reco=get_reco,
+                user_matrix=user_matrix,
+                )
 
         nib_scans_list.append(nib_im)
         visu_pars_list.append(visu_pars)
@@ -193,15 +223,117 @@ def scan2struct(pfo_scan,
             print("Warning: No 'method' file to parse.")
 
     # -- Return data structure
-    struct_scan = {'nib_scans_list' : nib_scans_list,
-                   'visu_pars_list' : visu_pars_list,
-                   'acqp'           : acqp,
-                   'reco'           : reco,
-                   'method'         : method,
-                   'acquisition_method'    : acquisition_method}
+    struct_scan = {'nib_scans_list'     : nib_scans_list,
+                   'visu_pars_list'     : visu_pars_list,
+                   'acqp'               : acqp,
+                   'reco'               : reco,
+                   'method'             : method,
+                   'acquisition_method' : acquisition_method}
 
     return struct_scan
 
+
+def compute_dwi_directions(bruker_struct,
+    frame_body_as_frame_head=False,
+    keep_same_det=True,
+    consider_subject_position=False,
+    user_matrix=None,
+    verbose=0,
+    ):
+    # -- Deals with b-vector: normalise, reorient and save in external .npy/txt.
+    dw_grad_vec = bruker_struct['method']['DwGradVec']
+
+    assert dw_grad_vec.shape[0] == bruker_struct['method']['DwNDiffExp']
+
+    # get b-vectors re-orientation matrix from visu-pars
+    reorientation_matrix = obtain_b_vectors_orient_matrix(bruker_struct['visu_pars_list'][0]['VisuCoreOrientation'],
+                                                          bruker_struct['visu_pars_list'][0]['VisuSubjectPosition'],
+                                                          frame_body_as_frame_head=frame_body_as_frame_head,
+                                                          keep_same_det=keep_same_det,
+                                                          consider_subject_position=consider_subject_position)
+
+    # apply reorientation
+    dw_grad_vec = apply_reorientation_to_b_vects(reorientation_matrix, dw_grad_vec)
+    # normalise:
+    dw_grad_vec = normalise_b_vect(dw_grad_vec)
+
+    # apply user affine transformation matrix if present
+    if not user_matrix is None:
+        user_affine = np.loadtxt(user_matrix)
+        dw_grad_vec = apply_matrix_to_bvecs(dw_grad_vec,user_affine)
+
+    # get bvals and bvects from bruker_struct
+    b_vals = bruker_struct['method']['DwEffBval']
+    b_vects = bruker_struct['method']['DwDir']
+    
+    return (dw_grad_vec, b_vals, b_vects)
+
+def save_dwi_directions(pfo_output, dw_grad_vec, b_vals, b_vects,
+    fin_scan='',
+    save_npy=False,
+    save_human_readable=True,
+    save_b_vals=True,
+    save_b_vects=False,
+    save_grad=True,
+    grad_suffix='_DwGradVec',
+    b_vals_suffix='_DwEffBval',
+    b_vects_suffix="_DwDir",
+    ):
+    # Grad
+    if save_npy:
+        if save_grad:
+            np.save(jph(pfo_output, fin_scan + grad_suffix + '.npy'), dw_grad_vec)
+        if save_b_vals:
+            np.save(jph(pfo_output, fin_scan + b_vals_suffix + '.npy'), b_vals)
+        if save_b_vects:
+            np.save(jph(pfo_output, fin_scan + b_vects_suffix + '.npy'), b_vects)
+
+    if save_human_readable:
+        if save_grad:
+            np.savetxt(jph(pfo_output, fin_scan + grad_suffix + '.txt'), dw_grad_vec.T, fmt='%.14f')
+        if save_b_vals:
+            np.savetxt(jph(pfo_output, fin_scan + b_vals_suffix + '.txt'), b_vals.T, fmt='%.14f', newline=' ')
+        if save_b_vects:
+            np.savetxt(jph(pfo_output, fin_scan + b_vects_suffix + '.txt'), b_vects.T, fmt='%.14f')
+
+def write_struct_dwi_directions(bruker_struct,
+    pfo_output,
+    fin_scan='',
+    save_npy=False,
+    save_human_readable=True,
+    frame_body_as_frame_head=False,
+    keep_same_det=True,
+    consider_subject_position=False,
+    user_matrix=None,
+    save_b_vals=True,
+    save_b_vects=False,
+    save_grad=True,
+    grad_suffix='_DwGradVec',
+    b_vals_suffix='_DwEffBval',
+    b_vects_suffix="_DwDir",
+    verbose=False
+    ):
+    
+    # Compute
+    #---------
+    dw_grad_vec, b_vals, b_vects = compute_dwi_directions(bruker_struct,
+                                        frame_body_as_frame_head=frame_body_as_frame_head,
+                                        keep_same_det=keep_same_det,
+                                        consider_subject_position=consider_subject_position,
+                                        user_matrix=user_matrix,
+                                        )
+
+    # Save
+    #------
+    save_dwi_directions(pfo_output, dw_grad_vec, b_vals, b_vects,
+        fin_scan='',
+        save_b_vals=save_b_vals,
+        save_b_vects=save_b_vects,
+        save_grad=save_grad,
+        grad_suffix=grad_suffix,
+        b_vals_suffix=b_vals_suffix,
+        b_vects_suffix=b_vects_suffix,
+        )
 
 def write_struct(bruker_struct,
                  pfo_output,
@@ -255,52 +387,16 @@ def write_struct(bruker_struct,
 
     if is_dwi:  # File method is the same for each sub-scan. Cannot embed this in the next for cycle.
 
-        # -- Deals with b-vector: normalise, reorient and save in external .npy/txt.
-        dw_grad_vec = bruker_struct['method']['DwGradVec']
-
-        assert dw_grad_vec.shape[0] == bruker_struct['method']['DwNDiffExp']
-
-        # get b-vectors re-orientation matrix from visu-pars
-        reorientation_matrix = obtain_b_vectors_orient_matrix(bruker_struct['visu_pars_list'][0]['VisuCoreOrientation'],
-                                                              bruker_struct['visu_pars_list'][0]['VisuSubjectPosition'],
-                                                              frame_body_as_frame_head=frame_body_as_frame_head,
-                                                              keep_same_det=keep_same_det,
-                                                              consider_subject_position=consider_subject_position)
-
-        # apply reorientation
-        dw_grad_vec = apply_reorientation_to_b_vects(reorientation_matrix, dw_grad_vec)
-        # normalise:
-        dw_grad_vec = normalise_b_vect(dw_grad_vec)
-
-        # apply user affine transformation matrix if present
-        if not user_matrix is None:
-            user_affine = np.loadtxt(user_matrix)
-            dw_grad_vec = apply_matrix_to_bvecs(dw_grad_vec,user_affine)
-
-        if save_npy:
-            np.save(jph(pfo_output, fin_scan + '_DwGradVec.npy'), dw_grad_vec)
-
-        if save_human_readable:
-            np.savetxt(jph(pfo_output, fin_scan + '_DwGradVec.txt'), dw_grad_vec.T, fmt='%.14f')
-
-        if verbose > 0:
-            msg = 'Diffusion weighted directions saved in ' + jph(pfo_output, fin_scan + '_DwDir.npy')
-            print(msg)
-
-        b_vals = bruker_struct['method']['DwEffBval']
-        b_vects = bruker_struct['method']['DwDir']
-
-        if save_npy:
-            np.save(jph(pfo_output, fin_scan + '_DwEffBval.npy'), b_vals)
-            np.save(jph(pfo_output, fin_scan + '_DwDir.npy'), b_vects)
-
-        if save_human_readable:
-            np.savetxt(jph(pfo_output, fin_scan + '_DwEffBval.txt'), b_vals.T, fmt='%.14f', newline=' ')
-            np.savetxt(jph(pfo_output, fin_scan + '_DwDir.txt'), b_vects.T, fmt='%.14f')
-
-        if verbose > 0:
-            print('B-vectors saved in {}'.format(jph(pfo_output, fin_scan + '_DwEffBval.npy')))
-            print('B-values  saved in {}'.format(jph(pfo_output, fin_scan + '_DwGradVec.npy')))
+        write_struct_dwi_directions(bruker_struct,
+            save_npy=save_npy,
+            save_human_readable=save_human_readable,
+            fin_scan=fin_scan,
+            frame_body_as_frame_head=frame_body_as_frame_head,
+            keep_same_det=keep_same_det,
+            consider_subject_position=consider_subject_position,
+            user_matrix=user_matrix,
+            verbose=verbose
+            )
 
     # save the dictionary as numpy array or json containing the corresponding dictionaries
     if not bruker_struct['acqp'] == {}:
