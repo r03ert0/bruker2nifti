@@ -110,7 +110,7 @@ def nifti_getter(img_data_vol,
         if tmp.size:
             vol_data = tmp
         else:
-            print "No reco file in scan: skipping reco_slope correction"
+            print("No reco file in scan: skipping reco_slope correction")
 
     # get number sub-volumes
     num_vols = len(eliminate_consecutive_duplicates(list(visu_pars['VisuCoreOrientation'])))
